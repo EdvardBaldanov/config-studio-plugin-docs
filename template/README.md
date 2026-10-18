@@ -1,6 +1,6 @@
 # My Awesome Plugin for Config Studio 🚀
 
-A plugin starter template for [Config Studio / Config Editor](https://github.com/EdvardBaldanov/Config-Editor).
+A plugin starter template for [Config Studio / Config Editor](https://github.com/EdvardBaldanov/config-studio).
 
 ## Features
 - Toolbar button with interactive notifications.

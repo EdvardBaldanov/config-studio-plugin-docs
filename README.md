@@ -1,9 +1,9 @@
 # Config Studio / Config Editor — Документация по разработке плагинов 🧩
 
-[![Config Editor](https://img.shields.io/badge/Config--Editor-v1.1.0-teal)](https://github.com/EdvardBaldanov/Config-Editor)
+[![Config Editor](https://img.shields.io/badge/Config--Studio-v1.1.0-teal)](https://github.com/EdvardBaldanov/config-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Официальное руководство, спецификации манифеста, справочник JavaScript API и готовые шаблоны для создания плагинов к [Config Editor](https://github.com/EdvardBaldanov/Config-Editor).
+Официальное руководство, спецификации манифеста, справочник JavaScript API и готовые шаблоны для создания плагинов к [Config Editor](https://github.com/EdvardBaldanov/config-studio).
 
 ---
 

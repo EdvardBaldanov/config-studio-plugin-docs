@@ -55,7 +55,7 @@ https://github.com/username/config-studio-my-plugin
 
 ### Как подать заявку:
 1. Опубликуйте рабочий репозиторий с версией `1.0.0`.
-2. Создайте Pull Request в основной репозиторий [EdvardBaldanov/Config-Editor](https://github.com/EdvardBaldanov/Config-Editor) с добавлением объекта в константу `OFFICIAL_CATALOG` в файле [`SettingsModal.tsx`](web/src/components/SettingsModal.tsx):
+2. Создайте Pull Request в основной репозиторий [EdvardBaldanov/config-studio](https://github.com/EdvardBaldanov/config-studio) с добавлением объекта в константу `OFFICIAL_CATALOG` в файле [`SettingsModal.tsx`](web/src/components/SettingsModal.tsx):
 
 ```typescript
 {
