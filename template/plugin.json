@@ -1,0 +1,11 @@
+{
+  "id": "my-awesome-plugin",
+  "name": "My Awesome Plugin",
+  "version": "1.0.0",
+  "description": "Boilerplate template for Config Studio plugin development",
+  "author": "Your Name",
+  "icon": "sparkles",
+  "entry": "main.js",
+  "css": "style.css",
+  "permissions": ["ui.panels"]
+}

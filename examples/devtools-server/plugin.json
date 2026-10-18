@@ -1,0 +1,11 @@
+{
+  "id": "devtools-server",
+  "name": "DevTools Local Server Example",
+  "version": "1.0.0",
+  "description": "Example demonstrating background process launching and Split-Screen preview panel",
+  "author": "Edvard Baldanov",
+  "icon": "terminal",
+  "entry": "main.js",
+  "css": "style.css",
+  "permissions": ["ui.panels", "terminal.exec", "network.bind"]
+}

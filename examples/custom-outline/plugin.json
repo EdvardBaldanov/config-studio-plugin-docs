@@ -1,0 +1,11 @@
+{
+  "id": "custom-outline",
+  "name": "Custom Outline Example (Nginx / Conf)",
+  "version": "1.0.0",
+  "description": "Example showing how to parse custom document structures and register Quick Jump tags",
+  "author": "Edvard Baldanov",
+  "icon": "list",
+  "entry": "main.js",
+  "permissions": ["ui.panels"],
+  "fileMatches": [".conf", ".nginx"]
+}

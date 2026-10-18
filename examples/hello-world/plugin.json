@@ -1,0 +1,10 @@
+{
+  "id": "hello-world",
+  "name": "Hello World Example",
+  "version": "1.0.0",
+  "description": "Minimal working plugin showing how to add a button and show notifications",
+  "author": "Edvard Baldanov",
+  "icon": "smile",
+  "entry": "main.js",
+  "permissions": ["ui.panels"]
+}
