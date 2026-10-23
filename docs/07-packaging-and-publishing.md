@@ -45,53 +45,155 @@ Config Studio поддерживает перенос окружения меж�
 
 ---
 
-## 4. 📦 Новый стандарт: Бинарный пакет `.cspkg` (v1.9.5+)
+## 4. 📦 Бинарный формат пакета `.cspkg` и утилита `cspkg`
 
-Начиная с версии 1.9.5, Config Studio вводит архитектуру дистрибуции плагинов в виде **единых компактных бинарных библиотек `.cspkg`** (Config Studio Package), вдохновленную форматом **MRS (Meta Rule Set)** из проекта *Clash.Meta / Mihomo*:
+Начиная с версии 1.9.5, Config Studio использует архитектуру распространения плагинов в виде **единых компактных бинарных библиотек `.cspkg`** (Config Studio Package), вдохновленную форматом **MRS (Meta Rule Set)** из проекта *Clash.Meta / Mihomo*:
 
 ### Преимущества бинарного контейнера `.cspkg`:
-1. **Zero-Disk / In-Memory Execution:** Ядро считывает плагин напрямую в оперативную память по байтовым смещениям (TOC). Полное отсутствие распаковки на диск, временных папок (`tmpDir`) и мусора в файловой системе.
-2. **Мгновенный старт:** Загрузка плагина за доли миллисекунды без накладных расходов на парсинг zip-архивов.
-3. **Целостность и безопасность:** Защита заголовка 32-байтным SHA-256 хешем содержимого и Magic Bytes `CSP\x01`.
-4. **Экстремальная компактность:** Встроенное сжатие алгоритмом Deflate сокращает размер плагина до единиц килобайт.
-5. **Zero External Dependencies:** Компилятор и загрузчик пакетов написаны исключительно на стандартной библиотеке Go (`encoding/binary`, `compress/flate`, `crypto/sha256`) без CGO.
-
-### Сборка пакета `.cspkg`:
-Для компиляции папки плагина в бинарный пакет используется встроенная CLI-утилита:
-
-```bash
-# Компиляция папки плагина в единый бинарник .cspkg
-config-studio pack ./my-plugin -o my-plugin.cspkg
-```
-
-Также в веб-интерфейсе окна настроек разработчикам доступна кнопка **«Собрать в .cspkg»** в 1 клик.
+1. **Zero-Disk / In-Memory Execution:** Ядро считывает и отдает файлы плагина (`main.js`, `style.css`, локали) на лету прямо из `.cspkg` в память. Никакой распаковки на диск, никакого мусора из сотен временных файлов в `data/plugins/`.
+2. **Мгновенный старт:** Загрузка и валидация манифеста плагина занимают меньше 0.5 миллисекунды.
+3. **Целостность и безопасность:** Заголовок защищен Magic Bytes `CSPK\x01`, 32-байтным SHA-256 хешем содержимого и проверкой манифеста `plugin.json`.
+4. **Экстремальная компактность:** Встроенное сжатие Deflate уменьшает размер пакета до 5–25 КБ.
+5. **Zero External Dependencies:** Утилита написана исключительно на стандартной библиотеке Go без CGO.
 
 ---
 
-## 5. Добавление плагина в Официальный Каталог
+### Скачивание автономного компилятора `cspkg`
 
-Каталог официальных плагинов позволяет тысячам пользователей находить и устанавливать ваш модуль в 1 клик.
+Готовые исполняемые файлы компилятора доступны в [Релизах репозитория документации](https://github.com/EdvardBaldanov/config-studio-plugin-docs/releases/tag/v1.0.0):
 
-### Критерии включения:
-1. **Безопасность:** Запрос только необходимых привилегий в манифесте, отсутствие попыток обхода безопасности.
-2. **Качество:** Корректная обработка ошибок, отсутствие утечек памяти, следование принципу Fail-Secure.
-3. **Документация:** Наличие файла `README.md` с описанием и скриншотами.
+| Платформа | Ссылка на скачивание |
+| :--- | :--- |
+| **Windows x64** | [`cspkg-windows-amd64.exe`](https://github.com/EdvardBaldanov/config-studio-plugin-docs/releases/download/v1.0.0/cspkg-windows-amd64.exe) |
+| **Linux x64** | [`cspkg-linux-amd64`](https://github.com/EdvardBaldanov/config-studio-plugin-docs/releases/download/v1.0.0/cspkg-linux-amd64) |
+| **macOS Apple Silicon (M1/M2/M3)** | [`cspkg-darwin-arm64`](https://github.com/EdvardBaldanov/config-studio-plugin-docs/releases/download/v1.0.0/cspkg-darwin-arm64) |
+| **macOS Intel x64** | [`cspkg-darwin-amd64`](https://github.com/EdvardBaldanov/config-studio-plugin-docs/releases/download/v1.0.0/cspkg-darwin-amd64) |
 
-### Как подать заявку:
-1. Опубликуйте репозиторий с релизом.
-2. Создайте Pull Request в основной репозиторий [EdvardBaldanov/config-studio](https://github.com/EdvardBaldanov/config-studio) с добавлением объекта плагина в файл источников каталога `plugins/sources.json`:
+#### Быстрая установка на Linux / macOS:
+```bash
+sudo curl -sSL -f https://github.com/EdvardBaldanov/config-studio-plugin-docs/releases/download/v1.0.0/cspkg-linux-amd64 -o /usr/local/bin/cspkg
+sudo chmod +x /usr/local/bin/cspkg
+cspkg version
+```
+
+---
+
+### Команды CLI-утилиты `cspkg`
+
+```bash
+# 1. Упаковка папки плагина в бинарник .cspkg
+cspkg pack ./my-plugin
+# или с явным указанием имени выходного файла:
+cspkg pack ./my-plugin -o my-plugin-1.0.0.cspkg
+
+# 2. Инспекция манифеста, SHA-256 и списка файлов внутри .cspkg
+cspkg inspect my-plugin-1.0.0.cspkg
+
+# 3. Валидация целостности пакета (проверка SHA-256 и структуры)
+cspkg validate my-plugin-1.0.0.cspkg
+
+# 4. Распаковка содержимого .cspkg обратно в папку
+cspkg unpack my-plugin-1.0.0.cspkg -o ./extracted_folder
+```
+
+---
+
+## 5. 🤖 Автоматизация релизов через GitHub Actions
+
+Чтобы при каждом обновлении версии плагина бинарный пакет `.cspkg` собирался и прикреплялся к GitHub Release автоматически, создайте в вашем репозитории файл `.github/workflows/release.yml`:
+
+```yaml
+name: Build and Release Plugin Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cspkg packager
+        run: |
+          sudo curl -sSL -f https://github.com/EdvardBaldanov/config-studio-plugin-docs/releases/download/v1.0.0/cspkg-linux-amd64 -o /usr/local/bin/cspkg
+          sudo chmod +x /usr/local/bin/cspkg
+          cspkg version
+
+      - name: Compile .cspkg binary package
+        run: |
+          PLUGIN_ID=$(jq -r '.id' plugin.json)
+          PLUGIN_VERSION=$(jq -r '.version' plugin.json)
+          echo "Building package for ${PLUGIN_ID} v${PLUGIN_VERSION}..."
+          cspkg pack . "${PLUGIN_ID}.cspkg"
+          cspkg inspect "${PLUGIN_ID}.cspkg"
+
+      - name: Create ZIP fallback
+        run: |
+          PLUGIN_ID=$(jq -r '.id' plugin.json)
+          zip -r "${PLUGIN_ID}.zip" . -x "*.git*" "*.github*" "*.cspkg" "*.zip"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.cspkg
+            *.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Как выпустить новую версию плагина:
+1. Обновите поле `"version"` в `plugin.json` (например, `"1.1.0"`).
+2. Закоммитьте изменения и поставьте Git-тег:
+   ```bash
+   git add plugin.json
+   git commit -m "chore: bump version to v1.1.0"
+   git tag v1.1.0
+   git push origin main --tags
+   ```
+3. GitHub Actions за 10–15 секунд скачает `cspkg`, скомпилирует `.cspkg` и опубликует официальный релиз с готовым пакетом для скачивания!
+
+---
+
+## 6. Добавление плагина в Официальный Каталог
+
+Центральный каталог расширений Config Studio работает на базе **GitHub Pages** в репозитории [config-studio-plugins](https://github.com/EdvardBaldanov/config-studio-plugins).
+
+Каталог хранит легковесный индекс `registry.json` и выступает указателем на последний релиз каждого расширения. Таким образом, плагины развиваются полностью независимо в собственных репозиториях.
+
+### Как добавить свой плагин:
+Создайте Pull Request в репозиторий [config-studio-plugins](https://github.com/EdvardBaldanov/config-studio-plugins), добавив ваш плагин в `registry.json`:
 
 ```json
 {
   "id": "my-plugin",
-  "name": "Название плагина",
+  "name": "My Plugin Name",
   "version": "1.0.0",
-  "description": "Краткое описание возможностей",
-  "icon": "server",
-  "downloadUrl": "https://github.com/username/config-studio-my-plugin/releases/latest/download/my-plugin.zip",
-  "repoUrl": "https://github.com/username/config-studio-my-plugin",
-  "category": "tools",
-  "official": true
+  "description": "Short description of what the plugin does",
+  "author": "Your Name / Organization",
+  "icon": "🚀",
+  "downloadUrl": "https://github.com/your-username/config-studio-my-plugin/releases/download/v1.0.0/my-plugin.cspkg",
+  "homepage": "https://github.com/your-username/config-studio-my-plugin",
+  "official": true,
+  "locales": {
+    "ru": {
+      "name": "Мой плагин",
+      "description": "Краткое описание на русском"
+    },
+    "en": {
+      "name": "My Plugin Name",
+      "description": "Short description in English"
+    }
+  },
+  "tags": ["Tool", "Automation"]
 }
 ```
-3. После слияния PR плагин появится в официальном каталоге у всех пользователей!
