@@ -23,6 +23,15 @@ export type PermissionType =
   | `service:${string}`
   | '*';
 
+export interface PluginSettingField {
+  id: string;
+  label: string;
+  description?: string;
+  type: 'boolean' | 'string' | 'number' | 'select';
+  default?: any;
+  options?: Array<{ label: string; value: any }>;
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -36,6 +45,7 @@ export interface PluginManifest {
   fileMatches?: string[];
   dependencies?: Record<string, string>;
   providesServices?: string[];
+  settings?: PluginSettingField[];
   locales?: Record<string, Record<string, string>>;
   localization?: {
     code: string;
@@ -249,6 +259,11 @@ export interface ConfigStudioAPI {
 
   // Localization & Translations
   i18n: I18nAPI;
+
+  // Plugin Settings & Configuration
+  registerPluginSettings(pluginId: string, renderer: (container: HTMLElement) => void): void;
+  getPluginSettings(pluginId: string): Promise<Record<string, any>>;
+  savePluginSettings(pluginId: string, settings: Record<string, any>): Promise<void>;
 
   // System & Helpers
   showNotification(message: string, type?: 'info' | 'success' | 'error'): void;

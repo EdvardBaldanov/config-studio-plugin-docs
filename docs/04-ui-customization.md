@@ -6,7 +6,7 @@
 
 ## 📐 Архитектура слотов расширения UI
 
-Config Studio предоставляет **6 официальных слотов интеграции**:
+Config Studio предоставляет **7 официальных слотов интеграции**:
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -157,6 +157,68 @@ window.ConfigStudio.registerHeaderItem({
     "files": "Archivos"
   }
 }
+```
+
+---
+
+## 7. Панель настроек плагина (Plugin Settings & Preferences)
+
+Начиная с **v1.9.6**, плагины могут предоставлять настройки для пользователей во вкладке настроек редактора **«Настройки плагинов»**.
+
+Доступно два способа настройки:
+
+### Вариант А: Декларативная схема в `plugin.json` (Автоматическая генерация формы)
+Если плагину требуется лишь набор переключателей, текстовых полей или выпадающих списков, объявите секцию `settings` в манифесте:
+
+```json
+{
+  "settings": [
+    {
+      "id": "autoReload",
+      "label": "Автоматическая перезагрузка",
+      "description": "Мягкий reload сервиса при сохранении файла",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "id": "port",
+      "label": "Порт локального сервера",
+      "type": "number",
+      "default": 8085
+    },
+    {
+      "id": "themeMode",
+      "label": "Стиль отчёта",
+      "type": "select",
+      "default": "compact",
+      "options": [
+        { "label": "Компактный", "value": "compact" },
+        { "label": "Детальный", "value": "detailed" }
+      ]
+    }
+  ]
+}
+```
+*Настройки автоматически сохраняются в `data/plugin-settings/<plugin-id>.json` и переносятся с профилем пользователя.*
+
+### Вариант Б: Кастомный UI рендерер через JS API
+Для сложного интерактивного интерфейса настроек зарегистрируйте рендерер:
+
+```javascript
+window.ConfigStudio.registerPluginSettings('my-plugin', (container) => {
+  container.innerHTML = `
+    <div class="space-y-4">
+      <h3 class="text-sm font-semibold">Кастомные параметры</h3>
+      <button id="btn-sync" class="px-3 py-1.5 rounded bg-accent text-white">Синхронизировать</button>
+    </div>
+  `;
+});
+```
+
+Чтение и запись сохраненных настроек из JS:
+```javascript
+const settings = await window.ConfigStudio.getPluginSettings('my-plugin');
+await window.ConfigStudio.savePluginSettings('my-plugin', { autoReload: false });
 ```
 
 ---
