@@ -1,125 +1,139 @@
-# Кастомизация интерфейса и стили (UI Panels & CSS) 🎨
+# Кастомизация интерфейса и стили (UI Panels & Slots) 🎨
 
 Плагины Config Studio могут бесшовно встраивать кастомные интерфейсы в приложение, поддерживая темную и светлую тему, акцентные цвета и дизайн-систему редактора.
 
 ---
 
-## 🎨 Переменные CSS и цветовая палитра
+## 📐 Архитектура слотов расширения UI
 
-В приложении настроена динамическая система CSS-переменных, которая меняется при выборе темы или пользовательской палитры в настройках:
-
-```css
-/* Основные переменные темы Config Studio */
-var(--bg-base)            /* Основной фон приложения */
-var(--bg-base-surface)    /* Фон карточек, модальных окон и боковых панелей */
-var(--border-base)        /* Цвет рамок и разделителей */
-var(--accent-color)       /* Акцентный цвет (задается пользователем, по умолчанию #00d2b4) */
-var(--accent-hover)       /* Акцентный цвет при наведении */
-var(--text-primary)       /* Основной цвет текста */
-var(--text-secondary)     /* Вторичный цвет текста (подписи, даты, подсказки) */
-```
-
-### Поддержка Tailwind CSS
-В приложении подключен Tailwind CSS, поэтому в коде плагина при создании DOM-элементов можно использовать стандартные классы Tailwind:
-```javascript
-const panel = document.createElement('div');
-panel.className = 'flex flex-col h-full bg-base-surface border-l border-base-border text-xs text-gray-300';
-```
-
----
-
-## 📐 Размещение компонентов
-
-Config Studio предлагает **4 точки расширения UI**:
+Config Studio предоставляет **6 официальных слотов интеграции**:
 
 ```
-+-------------------------------------------------------------------------+
-| [Header] Logo   Tabs...   (Header Items)      [Search] [⚙️] [User]      |
-+-------------------------------------------------------------------------+
-| [Toolbar]  (Toolbar Buttons)  |  Quick Jump Tags: [Tag 1] [Tag 2] ...   |
-+-------------+-----------------------------------+-----------------------+
-| File Tree   | Monaco Code Editor                | (Split Panel)         |
-|             |                                   |                       |
-|             |                                   | Live Preview /        |
-|             |                                   | Custom Tool /         |
-|             |                                   | Documentation         |
-|             +-----------------------------------+                       |
-|             | (Bottom Panel) Logs / Output      |                       |
-+-------------+-----------------------------------+-----------------------+
++-----------------------------------------------------------------------------------+
+| [Header] Logo   Tabs...   (Header Items)            [Поиск] [⚙️] [Секреты] [Профиль] |
++-----------------------------------------------------------------------------------+
+| [Toolbar]  [ ▶ Run: build | ▾ ] (Action Toolbar)  |  Quick Jump: [Tag 1] [Tag 2] ...  |
++-------------+-------------------------------------+-------------------------------+
+| File Tree   | Monaco Code Editor                  | (Split Panel)                 |
+|             |                                     |                               |
+| [Right-     |                                     | Live Preview /                |
+| Click       |                                     | Графические формы /           |
+| Context     |                                     | Документация                  |
+| Menu]       +-------------------------------------+                               |
+|             | [ 🔍 Проблемы (N) ] [ 📋 Аудит ] [ 🐳 Док Плагинов... ] (Bottom Dock)|
++-------------+-------------------------------------+-------------------------------+
 ```
 
 ---
 
-## 1. Сплит-панель (Split Panel)
+## 1. Панель действий: 1-Click Action Toolbar
 
-Сплит-панель монтируется справа от редактора. Это идеальное место для:
-- Живого предпросмотра веб-страниц (HTML, Markdown, SVG).
-- Интерактивных визуализаторов схем и диаграмм.
-- Графических форм для заполнения конфигов.
+Слот быстрого запуска задач над редактором. Реализует концепцию **Split Action Button**:
+- Левая часть `[ ▶ Run: build ]` запускает действие по умолчанию в **1 клик** или по горячей клавише `F5`.
+- Правая часть `[ ▾ ]` открывает выпадающее меню с переключением целей (`build`, `test`, `deploy`).
+
+### Декларативная регистрация в `plugin.json`:
+```json
+"actionToolbar": {
+  "primaryAction": "build",
+  "targets": [
+    { "id": "build", "label": "build (Default)" },
+    { "id": "test", "label": "test" },
+    { "id": "clean", "label": "clean" }
+  ],
+  "hotkey": "F5"
+}
+```
+
+> 🎯 **Принцип Zero-Clutter:** Кнопки тулбара отображаются строго для файлов, указанных в `fileMatches` (например, `Makefile` или `docker-compose.yml`). Для остальных файлов тулбар автоматически скрывается, оставляя чистое пространство для работы с текстом.
+
+---
+
+## 2. Контекстное меню проводника файлов (Context Menu Provider)
+
+Слот расширения контекстного меню по правому клику мыши на файлах, папках или пустой области проводника:
 
 ```javascript
-window.ConfigStudio.toggleSplitPanel({
-  id: 'my-preview',
-  pluginId: 'my-plugin',
-  title: 'SVG Previewer',
-  open: true,
-  render: (container) => {
-    container.innerHTML = '';
-    
-    // Создаем контейнер предпросмотра
-    const preview = document.createElement('div');
-    preview.className = 'h-full flex items-center justify-center p-4 overflow-auto';
-    
-    const file = window.ConfigStudio.getActiveFile();
-    if (file && file.name.endsWith('.svg')) {
-      preview.innerHTML = file.content;
-    } else {
-      preview.innerHTML = '<span class="text-gray-500">Откройте .svg файл для просмотра</span>';
-    }
-    
-    container.appendChild(preview);
+window.ConfigStudio.registerContextMenu({
+  id: 'git-blame',
+  label: 'История изменений (Git Blame)',
+  icon: 'git-commit',
+  group: 'tools', // 'open' | 'clipboard' | 'tools' | 'edit' | 'danger'
+  order: 20,
+  fileMatches: ['.yaml', '.json', '.conf'],
+  targetType: 'file', // 'file' | 'folder' | 'empty' | 'any'
+  onClick: async (path) => {
+    // Вызов команды или открытие панели...
   }
 });
 ```
 
----
-
-## 2. Элемент шапки (Header Item)
-
-В шапку можно встраивать компактные селекторы, переключатели режимов, бейджи состояния серверов или таймеры:
-
-```javascript
-window.ConfigStudio.registerHeaderItem({
-  id: 'env-badge',
-  pluginId: 'my-plugin',
-  order: 5, // Порядок следования в шапке
-  render: (container) => {
-    container.innerHTML = `
-      <div class="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-xs font-semibold">
-        PROD
-      </div>
-    `;
-  }
-});
-```
+### Поддерживаемые группы пунктов:
+- `open` — действия открытия и навигации.
+- `clipboard` — операции буфера обмена (копирование пути, содержимого).
+- `tools` — утилиты и действия плагинов (линтеры, деплой, превью).
+- `edit` — модификация структуры файлов (переименование, форматирование).
+- `danger` — удаление и опасные действия (выделяются красным цветом).
 
 ---
 
-## 3. Нижняя панель (Bottom Panel)
+## 3. Постоянная нижняя полоса (Bottom Dock Strip)
 
-Нижняя панель располагается под окном Monaco Editor и занимает всю ширину редактора. Подходит для консолей, вывода сборки и результатов тестов.
+Нижняя панель под Monaco Editor с поддержкой вкладок, плавного drag-ресайза высоты мышью и кнопки разворачивания во весь экран:
 
 ```javascript
 window.ConfigStudio.toggleBottomPanel({
-  id: 'build-terminal',
+  id: 'server-logs',
   pluginId: 'my-plugin',
-  title: 'Terminal Output',
+  title: 'Логи контейнеров',
   open: true,
   render: (container) => {
     container.innerHTML = `
-      <div class="h-32 bg-black/60 font-mono text-xs p-3 overflow-y-auto text-emerald-400 space-y-1">
-        <div>$ npm run build</div>
-        <div class="text-gray-400">> build success in 320ms</div>
+      <div class="h-full bg-black/60 font-mono text-xs p-3 overflow-y-auto text-emerald-400">
+        <div>[INFO] Application started on :8080</div>
+      </div>
+    `;
+  }
+});
+```
+- Пользователь может сворачивать и разворачивать панель в 1 клик или шорткатом `Ctrl+~` / `Ctrl+J`.
+- В настройках доступен выбор поведения `dockMode`: `auto` (скрывать, когда нет активных плагинов), `always` или `hidden`.
+
+---
+
+## 4. Сплит-панель (Split Screen Panel)
+
+Монтируется справа от редактора кода. Идеально для:
+- Живого предпросмотра веб-страниц (HTML, PHP, Markdown, SVG).
+- Интерактивных визуализаторов и графических форм.
+
+```javascript
+window.ConfigStudio.toggleSplitPanel({
+  id: 'web-preview',
+  pluginId: 'web-devkit',
+  title: 'Предпросмотр страницы',
+  open: true,
+  render: (container) => {
+    container.innerHTML = '<iframe src="http://localhost:8085" class="w-full h-full border-none"></iframe>';
+  }
+});
+```
+
+---
+
+## 5. Элемент шапки (Header Item)
+
+Компактные виджеты в верхней навигационной строке:
+```javascript
+window.ConfigStudio.registerHeaderItem({
+  id: 'fleet-status',
+  pluginId: 'remote-agent',
+  order: 5,
+  render: (container) => {
+    container.innerHTML = `
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        Fleet: 12 Nodes
       </div>
     `;
   }
@@ -128,28 +142,34 @@ window.ConfigStudio.toggleBottomPanel({
 
 ---
 
-## 4. Кастомные модальные окна
+## 6. Языковые пакеты интерфейса (UI Language Packs)
 
-Плагин может создавать собственные модальные окна, используя стандартную фиксированную подложку:
+Плагин может переводить весь интерфейс Config Studio на новый язык:
 
-```javascript
-function showCustomModal(title, message) {
-  const backdrop = document.createElement('div');
-  backdrop.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in';
-
-  backdrop.innerHTML = `
-    <div class="w-full max-w-md bg-base-surface border border-base-border rounded-3xl p-6 shadow-2xl space-y-4">
-      <h3 class="text-base font-bold text-white">${title}</h3>
-      <p class="text-xs text-gray-300 leading-relaxed">${message}</p>
-      <div class="flex justify-end space-x-2 pt-2">
-        <button id="close-modal-btn" class="px-4 py-2 rounded-xl text-xs font-semibold bg-accent text-gray-900 hover:opacity-90 transition">
-          Понятно
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(backdrop);
-  backdrop.querySelector('#close-modal-btn').onclick = () => backdrop.remove();
+```json
+"localization": {
+  "code": "es",
+  "name": "Español",
+  "flag": "🇪🇸",
+  "translations": {
+    "settings": "Configuración",
+    "save": "Guardar",
+    "files": "Archivos"
+  }
 }
+```
+
+---
+
+## 🎨 Переменные CSS и Tailwind CSS
+
+Приложение полностью совместимо со стандартными классами **Tailwind CSS**. Дополнительно доступны глобальные CSS-переменные:
+
+```css
+var(--bg-base)            /* Основной фон окна */
+var(--bg-base-surface)    /* Фон карточек и модальных окон */
+var(--border-base)        /* Цвет разделителей и границ */
+var(--accent-color)       /* Акцентный цвет кнопок (выбирается в настройках) */
+var(--text-primary)       /* Основной текст */
+var(--text-secondary)     /* Второстепенный текст и подсказки */
 ```

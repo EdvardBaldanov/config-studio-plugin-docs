@@ -10,12 +10,15 @@
     return;
   }
 
-  // 1. Add Toolbar Action Button
+  // 1. Localized strings helper
+  const { t } = window.ConfigStudio.i18n ? window.ConfigStudio.i18n.scoped(pluginId) : { t: (k, def) => def };
+
+  // 2. Add Toolbar Action Button
   window.ConfigStudio.registerToolbarButton({
     id: `${pluginId}-btn`,
     pluginId: pluginId,
-    label: 'Action',
-    title: 'Click to trigger custom action',
+    label: t('btn_label', 'Action'),
+    title: t('btn_title', 'Click to trigger custom action'),
     icon: 'sparkles',
     visible: () => true,
     onClick: () => {
@@ -27,7 +30,25 @@
     }
   });
 
-  // 2. Add Split-Screen Panel
+  // 3. Add Context Menu Action for File Explorer
+  if (typeof window.ConfigStudio.registerContextMenu === 'function') {
+    window.ConfigStudio.registerContextMenu({
+      id: `${pluginId}-context-action`,
+      label: t('menu_action', 'Custom Plugin Action'),
+      icon: 'sparkles',
+      group: 'tools',
+      order: 50,
+      targetType: 'file',
+      onClick: async (targetPath) => {
+        window.ConfigStudio.showNotification(
+          `Context action triggered on: ${targetPath}`,
+          'info'
+        );
+      }
+    });
+  }
+
+  // 4. Add Split-Screen Panel
   window.ConfigStudio.toggleSplitPanel({
     id: `${pluginId}-panel`,
     pluginId: pluginId,

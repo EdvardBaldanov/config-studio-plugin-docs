@@ -1,9 +1,11 @@
-# Config Studio / Config Editor — Документация по разработке плагинов 🧩
+# Config Studio — Документация по разработке плагинов 🧩
 
-[![Config Editor](https://img.shields.io/badge/Config--Studio-v1.1.0-teal)](https://github.com/EdvardBaldanov/config-studio)
+[![Config Studio](https://img.shields.io/badge/Config--Studio-v1.9.0-teal.svg)](https://github.com/EdvardBaldanov/config-studio)
+[![Plugin Format](https://img.shields.io/badge/Format-.cspkg%20%7C%20ZIP-blue.svg)](docs/07-packaging-and-publishing.md)
+[![Security: Zero Trust](https://img.shields.io/badge/Security-Zero%20Trust%20%7C%20Fail--Secure-rose.svg)](docs/06-terminal-and-security.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Официальное руководство, спецификации манифеста, справочник JavaScript API и готовые шаблоны для создания плагинов к [Config Editor](https://github.com/EdvardBaldanov/config-studio).
+Официальное руководство, спецификации манифеста, справочник JavaScript API, типовые шаблоны и система безопасности для создания плагинов к [Config Studio](https://github.com/EdvardBaldanov/config-studio).
 
 ---
 
@@ -12,44 +14,45 @@
 | Раздел | Описание |
 | :--- | :--- |
 | 🚀 [**1. Быстрый старт: Первый плагин за 5 минут**](docs/01-getting-started.md) | Минимальная структура плагина, написание кода и способы локальной установки. |
-| 📄 [**2. Спецификация манифеста `plugin.json`**](docs/02-manifest-plugin-json.md) | Полная схема полей манифеста, валидация и система разрешений (`permissions`). |
-| 🛠️ [**3. Справочник JavaScript API (`window.ConfigStudio`)**](docs/03-javascript-api.md) | Все доступные методы: управление файлами, Monaco Editor, панели, уведомления. |
-| 🎨 [**4. Кастомизация интерфейса и стили (UI Panels & CSS)**](docs/04-ui-customization.md) | Split-Screen, Toolbar, Header, Bottom Panels, темы оформления и переменные CSS. |
+| 📄 [**2. Спецификация манифеста `plugin.json`**](docs/02-manifest-plugin-json.md) | Схема полей, зависимости SemVer (`dependencies`), сервисы (`providesServices`), права и локализация. |
+| 🛠️ [**3. Справочник JavaScript API (`window.ConfigStudio`)**](docs/03-javascript-api.md) | Все доступные методы: файлы, Monaco Editor, контекстное меню, межплагинные RPC-сервисы, хранилище секретов и `i18n`. |
+| 🎨 [**4. Кастомизация интерфейса и точки расширения**](docs/04-ui-customization.md) | 1-Click Action Toolbar (Split Button), контекстное меню, постоянная нижняя панель (Bottom Dock), Split-Screen и темы CSS. |
 | 🧠 [**5. Monaco Editor и Парсеры AST-структуры**](docs/05-monaco-and-outline.md) | Автодополнение (IntelliSense), сниппеты и регистрация кастомных Outline-провайдеров. |
-| 🛡️ [**6. Исполнение команд на хосте и безопасность**](docs/06-terminal-and-security.md) | Запуск системных утилит (`exec`), фоновые процессы, черный список и подтверждения. |
-| 📦 [**7. Упаковка, публикация и подача в каталог**](docs/07-packaging-and-publishing.md) | Создание ZIP-архивов, публикация на GitHub и добавление в официальный каталог (1-клик). |
+| 🛡️ [**6. Исполнение команд на хосте и безопасность**](docs/06-terminal-and-security.md) | Модель Zero Trust (Fail-Secure), экран согласия (Consent Dialog), черный список команд и журнал аудита (Core Audit Log). |
+| 📦 [**7. Упаковка, публикация и бинарный формат `.cspkg`**](docs/07-packaging-and-publishing.md) | Бинарный контейнер `.cspkg` (в стиле MRS из Mihomo), ZIP-архивы, переносимые профили и официальный каталог. |
 
 ---
 
-## ⚡ Быстрый обзор возможностей плагина
+## ⚡ Быстрый обзор возможностей архитектуры плагинов
 
-Плагины Config Studio работают непосредственно в среде браузера и получают контролируемый доступ к системному ядру:
+Плагины работают в контролируемой песочнице браузера и взаимодействуют с защищенным системным ядром Config Studio:
 
 ```javascript
 (function() {
-  const pluginId = 'my-tool';
+  const pluginId = 'quick-deploy';
   if (!window.ConfigStudio) return;
 
-  // 1. Добавление кнопки в панель инструментов
-  window.ConfigStudio.registerToolbarButton({
-    id: 'my-action-btn',
-    pluginId: pluginId,
-    label: 'Собрать',
-    title: 'Запустить сборку проекта',
-    icon: 'play',
-    onClick: async () => {
-      // 2. Исполнение команды на хосте
-      const res = await window.ConfigStudio.exec({
-        pluginId: pluginId,
-        command: 'npm',
-        args: ['run', 'build']
-      });
+  // 1. Интернационализация через встроенный движок i18n
+  const { t } = window.ConfigStudio.i18n.scoped(pluginId);
 
-      // 3. Всплывающее уведомление
-      window.ConfigStudio.showNotification(
-        res.exitCode === 0 ? 'Сборка успешна!' : 'Ошибка сборки',
-        res.exitCode === 0 ? 'success' : 'error'
-      );
+  // 2. Добавление действия в контекстное меню проводника файлов
+  window.ConfigStudio.registerContextMenu({
+    id: 'deploy-action',
+    label: t('deploy_label', 'Развернуть на серверах (Deploy)'),
+    icon: 'server',
+    group: 'tools',
+    fileMatches: ['docker-compose*.yml', 'nginx.conf'],
+    targetType: 'file',
+    onClick: async (targetPath) => {
+      // 3. Безопасное получение SSH-ключа из OS Keychain / Vault
+      const sshKey = await window.ConfigStudio.secrets.get('fleet_ssh_key', 'shared');
+
+      // 4. Вызов межплагинного RPC-сервиса (SSH Client)
+      const ssh = window.ConfigStudio.services.get('ssh', pluginId);
+      await ssh.exec('192.168.1.10', `docker compose -f ${targetPath} up -d`);
+
+      // 5. Всплывающее уведомление
+      window.ConfigStudio.showNotification(t('success', 'Конфигурация успешно применена!'), 'success');
     }
   });
 })();
@@ -59,33 +62,33 @@
 
 ## 📁 Структура этого репозитория
 
-- `docs/` — пошаговые руководства и спецификации (главы 1–7).
-- `types/` — файл TypeScript-типизации [`config-studio.d.ts`](types/config-studio.d.ts) для подсказок в вашей IDE (VS Code / WebStorm).
-- `template/` — чистый готовый boilerplate-шаблон для быстрого старта нового плагина.
+- `docs/` — подробные руководства и спецификации (главы 1–7).
+- `types/` — файл TypeScript-типизации [`config-studio.d.ts`](types/config-studio.d.ts) для автокомплита в вашей IDE (VS Code / WebStorm / Cursor).
+- `template/` — готовый boilerplate-шаблон для быстрого старта нового плагина.
 - `examples/` — рабочие примеры плагинов:
-  - [`hello-world`](examples/hello-world) — базовый пример взаимодействия с интерфейсом.
+  - [`hello-world`](examples/hello-world) — базовый пример взаимодействия с интерфейсом и тулбаром.
   - [`custom-outline`](examples/custom-outline) — кастомный парсер AST-структуры для `.conf` файлов с кнопками Quick Jump.
   - [`devtools-server`](examples/devtools-server) — запуск локального веб-сервера с управлением из Split-Screen панели.
 
 ---
 
-## 📦 Способы установки плагинов в Config Studio
+## 🛡️ Безопасность и Zero Trust
 
-1. **В 1 клик из каталога**:
-   В окне «Настройки» (⚙️) → «Плагины» выберите нужный официальный плагин и нажмите «Установить».
-2. **По ссылке на GitHub репозиторий**:
-   Вставьте ссылку вида `https://github.com/username/my-plugin` во вкладку «По ссылке (URL / GitHub)».
-3. **Загрузка .ZIP архива**:
-   Перетащите `.zip` архив с плагином в окно настроек.
-4. **Прямое копирование (для разработки)**:
-   Поместите папку плагина в `data/plugins/<id>/` рядом с исполняемым файлом Config Studio.
+Config Studio реализует строгую модель безопасности:
+- **Fail-Secure (Fail-Closed):** Любые неизвестные или кастомные разрешения классифицируются как **`Critical Risk`**.
+- **Human-in-the-Loop:** Пользователь видит детальный экран согласия (`PluginConsentModal`) перед установкой любого плагина.
+- **Изоляция секретов:** Пароли и SSH-ключи хранятся в OS Keychain / Credential Manager и никогда не попадают в экспортируемые профили.
+- **Журнал аудита:** Все критические действия журналируются в `audit.jsonl` с фиксацией SHA-256 хешей файлов.
 
 ---
 
-## 🌟 Официальные плагины для примера
+## 📦 Способы распространения и установки
 
-- 🌐 [config-studio-web-devkit](https://github.com/EdvardBaldanov/config-studio-web-devkit) — живой предпросмотр HTML/PHP, веб-сервер :8085 и сниппеты Monaco.
-- 🖥️ [config-studio-remote-agent](https://github.com/EdvardBaldanov/config-studio-remote-agent) — переключение серверов в шапке редактора для мультисерверного управления.
+1. **В 1 клик из каталога:** Через окно настроек из официальных и сторонних источников (`plugins/sources.json`).
+2. **Бинарный пакет `.cspkg` (v1.9.5+):** Сверхбыстрый монолитный контейнер (по принципу MRS из Clash.Meta), читаемый ядром прямо в память без распаковки на диск.
+3. **По ссылке на GitHub:** Автоматическая безопасная инспекция и установка из репозитория.
+4. **ZIP-архив:** Установка перетаскиванием (drag-and-drop) в интерфейс.
+5. **Dev Mode:** Локальная папка в `data/plugins/<id>/` для мгновенной правки кода без перезагрузки.
 
 ---
 

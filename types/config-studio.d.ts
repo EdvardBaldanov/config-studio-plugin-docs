@@ -1,8 +1,55 @@
 /**
  * TypeScript Definitions for Config Studio Plugin SDK
+ * Config Studio v1.9.0+
+ *
  * Use in your plugin development for autocompletion and type checking:
  * /// <reference path="./types/config-studio.d.ts" />
  */
+
+export type PermissionType =
+  | 'fs.read'
+  | 'fs.write'
+  | 'shell.exec'
+  | 'terminal.exec'
+  | 'remote.exec'
+  | 'network'
+  | 'network.bind'
+  | 'secrets'
+  | 'secrets.access'
+  | 'contextmenu'
+  | 'toolbar'
+  | 'ui.panels'
+  | `ui.${string}`
+  | `service:${string}`
+  | '*';
+
+export interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author?: string;
+  icon?: string;
+  entry: string;
+  css?: string;
+  permissions?: (PermissionType | string)[];
+  fileMatches?: string[];
+  dependencies?: Record<string, string>;
+  providesServices?: string[];
+  locales?: Record<string, Record<string, string>>;
+  localization?: {
+    code: string;
+    name: string;
+    flag?: string;
+    translations: Record<string, string>;
+  };
+  actionToolbar?: {
+    primaryAction?: string;
+    targets?: Array<{ id: string; label: string; command?: string }>;
+    hotkey?: string;
+  };
+  minAppVersion?: string;
+}
 
 export interface OpenFile {
   name: string;
@@ -20,6 +67,20 @@ export interface ToolbarButtonDef {
   icon?: string; // Lucide icon name, e.g. 'globe', 'play', 'terminal', 'server'
   visible?: () => boolean;
   onClick: () => void | Promise<void>;
+}
+
+export interface ContextMenuItemDef {
+  id: string;
+  label: string;
+  icon?: string; // Lucide icon name
+  group?: 'open' | 'clipboard' | 'tools' | 'edit' | 'danger';
+  order?: number;
+  shortcut?: string;
+  fileMatches?: string[]; // e.g. ['.yaml', '.json']
+  targetType?: 'file' | 'folder' | 'empty' | 'any';
+  onClick: (targetPath?: string, isDir?: boolean) => void | Promise<void>;
+  isVisible?: (targetPath?: string, isDir?: boolean) => boolean;
+  isEnabled?: (targetPath?: string, isDir?: boolean) => boolean;
 }
 
 export interface SplitPanelDef {
@@ -55,7 +116,7 @@ export interface OutlineNode {
 }
 
 export interface OutlineProvider {
-  language: string; // e.g. 'html', 'php', 'rust', 'go'
+  language: string; // e.g. 'html', 'php', 'rust', 'go', 'nginx'
   parse: (content: string, filename: string) => OutlineNode[];
 }
 
@@ -95,9 +156,66 @@ export interface StartProcessRequest {
   port?: number;
 }
 
+export interface InterPluginServicesAPI {
+  /**
+   * Register an inter-plugin service provider.
+   * Requires plugin to declare service name in manifest `providesServices`.
+   */
+  register(serviceName: string, implementation: any, providerPluginId: string): void;
+
+  /**
+   * Access a service provided by another plugin.
+   * Requires plugin to declare dependency in `dependencies` and permission `service:<name>`.
+   */
+  get<T = any>(serviceName: string, consumerPluginId?: string): T;
+
+  /**
+   * List all registered active service names.
+   */
+  list(): string[];
+}
+
+export interface SecretsAPI {
+  /**
+   * Retrieve a secret value by key from the secure OS Keychain / Vault.
+   * Requires 'secrets' or 'secrets.access' permission.
+   */
+  get(key: string, scope?: 'shared' | 'plugin'): Promise<string | null>;
+
+  /**
+   * List names of shared fleet secrets available for plugins.
+   */
+  listShared(): Promise<string[]>;
+}
+
+export interface I18nAPI {
+  /**
+   * Translate a key using current application locale with optional parameters.
+   */
+  t(key: string, fallback?: string, params?: Record<string, any>): string;
+
+  /**
+   * Create a scoped translator helper for a specific plugin.
+   */
+  scoped(pluginId: string): {
+    t: (key: string, fallback?: string, params?: Record<string, any>) => string;
+  };
+
+  /**
+   * Get current active language code ('ru', 'en', etc.).
+   */
+  getLanguage(): string;
+
+  /**
+   * Subscribe to language change events.
+   */
+  onLanguageChange(callback: (lang: string) => void): () => void;
+}
+
 export interface ConfigStudioAPI {
   // UI Panels & Customization
   registerToolbarButton(btn: ToolbarButtonDef): void;
+  registerContextMenu(item: ContextMenuItemDef): void;
   registerSplitPanel(panel: SplitPanelDef): void;
   toggleSplitPanel(panelDef: Partial<SplitPanelDef> & { id: string }): void;
   registerBottomPanel(panel: BottomPanelDef): void;
@@ -122,6 +240,15 @@ export interface ConfigStudioAPI {
   exec(req: ExecRequest): Promise<ExecResponse>;
   startProcess(req: StartProcessRequest): Promise<ProcessInfo>;
   stopProcess(processId: string): Promise<void>;
+
+  // Inter-Plugin RPC & Services
+  services: InterPluginServicesAPI;
+
+  // Secure OS Keychain & Secrets
+  secrets: SecretsAPI;
+
+  // Localization & Translations
+  i18n: I18nAPI;
 
   // System & Helpers
   showNotification(message: string, type?: 'info' | 'success' | 'error'): void;

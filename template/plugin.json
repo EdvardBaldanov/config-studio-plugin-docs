@@ -7,5 +7,20 @@
   "icon": "sparkles",
   "entry": "main.js",
   "css": "style.css",
-  "permissions": ["ui.panels"]
+  "permissions": [
+    "ui.panels",
+    "toolbar",
+    "contextmenu"
+  ],
+  "locales": {
+    "ru": {
+      "name": "Мой Отличный Плагин",
+      "description": "Шаблон для быстрого старта разработки плагинов Config Studio"
+    },
+    "en": {
+      "name": "My Awesome Plugin",
+      "description": "Boilerplate template for Config Studio plugin development"
+    }
+  },
+  "minAppVersion": "1.9.0"
 }
