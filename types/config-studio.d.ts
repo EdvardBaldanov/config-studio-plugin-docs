@@ -265,6 +265,11 @@ export interface ConfigStudioAPI {
   getPluginSettings(pluginId: string): Promise<Record<string, any>>;
   savePluginSettings(pluginId: string, settings: Record<string, any>): Promise<void>;
 
+  // UI & Design System
+  ui: {
+    toast(message: string, type?: 'info' | 'success' | 'error' | 'warning', title?: string): void;
+  };
+
   // System & Helpers
   showNotification(message: string, type?: 'info' | 'success' | 'error'): void;
   setRemoteEndpoint(url: string | null, token?: string): void;
