@@ -1,6 +1,6 @@
 /**
  * TypeScript Definitions for Config Studio Plugin SDK
- * Config Studio v1.9.0+
+ * Config Studio v2.0.0+
  *
  * Use in your plugin development for autocompletion and type checking:
  * /// <reference path="./types/config-studio.d.ts" />
@@ -44,6 +44,7 @@ export interface PluginManifest {
   permissions?: (PermissionType | string)[];
   fileMatches?: string[];
   dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
   providesServices?: string[];
   settings?: PluginSettingField[];
   locales?: Record<string, Record<string, string>>;
@@ -175,9 +176,22 @@ export interface InterPluginServicesAPI {
 
   /**
    * Access a service provided by another plugin.
-   * Requires plugin to declare dependency in `dependencies` and permission `service:<name>`.
+   * Requires plugin to declare dependency in `dependencies` or `optionalDependencies` and permission `service:<name>`.
+   * Throws an error if service is not registered.
    */
   get<T = any>(serviceName: string, consumerPluginId?: string): T;
+
+  /**
+   * Safely retrieve a service if it is active, or null if the optional plugin is not installed/disabled.
+   * Does not throw if service is missing or uninstalled.
+   * Available in Config Studio v2.0.0+.
+   */
+  getOptional<T = any>(serviceName: string, consumerPluginId?: string): Promise<T | null>;
+
+  /**
+   * Check if a service is registered and active in the service bus.
+   */
+  has(serviceName: string): boolean;
 
   /**
    * List all registered active service names.

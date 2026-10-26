@@ -147,8 +147,8 @@ window.ConfigStudio.services.register('ssh', {
 }, 'ssh-client');
 ```
 
-### Для потребителя: `services.get(name, consumerId)`
-Объявите зависимость в `dependencies` и разрешение `service:<name>` в `plugin.json`:
+### Для потребителя (Обязательный сервис): `services.get(name, consumerId)`
+Объявите зависимость в `dependencies` (или `optionalDependencies`) и разрешение `service:<name>` в `plugin.json`:
 
 ```javascript
 // Плагин "quick-deploy"
@@ -157,8 +157,31 @@ const ssh = window.ConfigStudio.services.get('ssh', 'quick-deploy');
 const result = await ssh.exec('192.168.1.10', 'docker compose pull');
 window.ConfigStudio.showNotification('Сервер обновлен!', 'success');
 ```
+*Примечание: Если сервис не зарегистрирован или плагин-провайдер отключен, `services.get` выбрасывает исключение `Error`.*
 
-> 🔒 **Защита ядра:** Ядро автоматически блокирует доступ к сервису, если вызывающий плагин не запросил разрешение `service:<name>` в своем манифесте или не указал плагин-провайдер в зависимостях.
+### Для потребителя (Опциональный сервис): `services.getOptional(name, consumerId)` *(v2.0.0+)*
+Используется для мягких зависимостей (`optionalDependencies`), когда плагин может продолжать работать даже без стороннего модуля:
+
+```javascript
+// Безопасное подключение опционального форматировщика или линтера
+const formatter = await window.ConfigStudio.services.getOptional('yaml-formatter', 'quick-deploy');
+
+if (formatter) {
+  // Расширение установлено и активно: используем продвинутое форматирование
+  const formatted = await formatter.format(activeContent);
+  window.ConfigStudio.setActiveContent(formatted);
+} else {
+  // Расширение не установлено: работаем в базовом режиме
+  console.log('[quick-deploy] YAML Formatter не обнаружен, используется встроенный режим');
+}
+```
+*Преимущество:* метод **никогда не выбрасывает ошибку** — если плагин не установлен или отключен пользователем, он просто возвращает `null`.
+
+### Вспомогательные методы шины сервисов:
+- `services.has(serviceName)` — возвращает `true`, если сервис с таким именем зарегистрирован и доступен в шине.
+- `services.list()` — возвращает строковый массив всех доступных в данный момент сервисов: `['ssh', 'yaml-formatter', ...]`.
+
+> 🔒 **Защита ядра:** Ядро автоматически блокирует доступ к сервису, если вызывающий плагин не запросил разрешение `service:<name>` в своем манифесте или не указал плагин-провайдер в `dependencies` / `optionalDependencies`.
 
 ---
 
